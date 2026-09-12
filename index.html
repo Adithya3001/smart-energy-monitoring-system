@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="color-scheme" content="dark light" />
+<title>Smart Energy — Your personal energy assistant</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230fb981'/%3E%3Cpath d='M18 6 9 18h5l-2 8 9-12h-5z' fill='%23fff'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= BOOT / LOADING STATE ================= -->
+  <div id="boot" class="boot" aria-hidden="false">
+    <div class="boot-inner">
+      <div class="boot-logo skeleton-box"></div>
+      <div class="skeleton-line w70"></div>
+      <div class="skeleton-line w90"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <p class="boot-note">Analyzing your energy usage…</p>
+    </div>
+  </div>
+
+  <!-- ================= SIDEBAR (desktop) ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-ico" id="brand-ico" aria-hidden="true"></span>
+      <div><b>Smart Energy</b><small>Your energy assistant</small></div>
+    </div>
+    <nav class="side-nav" aria-label="Primary navigation">
+      <button class="side-item active" data-nav="Home"><span class="nav-ico" data-ico="home"></span><span>Home</span></button>
+      <button class="side-item" data-nav="Appliances"><span class="nav-ico" data-ico="plug"></span><span>My appliances</span></button>
+      <button class="side-item" data-nav="Insights"><span class="nav-ico" data-ico="bulb"></span><span>Insights</span></button>
+      <button class="side-item" data-nav="Profile"><span class="nav-ico" data-ico="user"></span><span>Profile</span></button>
+    </nav>
+    <div class="side-foot">
+      <div class="side-score"><span>Energy score</span><b id="side-score">—</b></div>
+      <p class="side-note">Prototype · iAWE household dataset · 30 days</p>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="side-backdrop" hidden></div>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+
+    <!-- OFFLINE BANNER -->
+    <div id="offline-banner" class="banner banner-error" hidden>
+      <span class="banner-ico" data-ico="wifi-off"></span>
+      <div>
+        <b>You're offline.</b>
+        <p>Showing the latest recorded dataset readings<span id="offline-date">.</span></p>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS PANEL -->
+    <div id="notif-panel" class="notif-panel" aria-hidden="true" role="dialog" aria-label="Notifications">
+      <div class="notif-head">
+        <h2>Notifications</h2>
+        <button class="icon-btn" id="notif-close" aria-label="Close notifications" data-ico="close"></button>
+      </div>
+      <div id="notif-list"></div>
+    </div>
+    <div id="notif-scrim" class="scrim" hidden></div>
+
+    <!-- ============ SCREEN: HOME ============ -->
+    <section class="screen active" id="screen-Home">
+      <header class="appbar">
+        <button class="icon-btn menu-btn" data-open-sidebar aria-label="Open menu" data-ico="menu"></button>
+        <div>
+          <p class="eyebrow" id="greeting">Good evening 👋</p>
+          <h1>Home</h1>
+        </div>
+        <div class="appbar-actions">
+          <button class="icon-btn" id="bell-btn" aria-label="Notifications"><svg aria-hidden="true"><use href="#i-bell"/></svg><span class="badge" id="bell-badge">3</span></button>
+          <div class="avatar">D</div>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- HERO -->
+        <div class="hero span-2">
+          <div class="hero-head">
+            <div>
+              <p class="hero-label">Today's energy usage</p>
+              <span class="dataset-ctx" id="hero-ctx"></span>
+            </div>
+            <span class="chip up" id="today-vs-yday">—</span>
+          </div>
+<div class="hero-value" id="hero-kwh">—<span class="hero-unit">kWh</span></div>
+<p class="hero-explain" id="hero-explain">Loading your latest readings…</p>
+          <div class="hero-bottom">
+            <div class="hero-stat">
+              <span class="muted">Estimated cost</span>
+              <span class="hero-cost" id="today-cost">—</span>
+              <small class="cost-note" id="cost-note">Estimated at your tariff</small>
+            </div>
+            <div class="hero-stat">
+              <span class="muted">Yesterday</span>
+              <span class="hero-yday" id="hero-yesterday">— kWh</span>
+              <small class="cost-note">baseline day</small>
+            </div>
+            <div class="hero-stat">
+              <span class="muted">30-day goal</span>
+              <span class="goal-num-mini" id="goal-mini-num">—</span>
+              <div class="goal-mini"><span id="goal-mini-bar"></span></div>
+            </div>
+            <button class="hero-score-btn" id="score-card" data-go="Insights" data-tab="goals">
+              <span class="muted">Energy score</span>
+              <span class="score-num" id="score-num">—</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- EXPECTED BILL (compact) -->
+        <button class="card span-2 bill-compact" data-go="Insights" data-tab="usage">
+          <span class="bill-c-ico" data-ico="bolt"></span>
+          <div class="bill-c-main">
+            <span class="muted">EXPECTED BILL · THIS BILLING CYCLE</span>
+            <span class="bill-c-amt" id="home-bill">₹—</span>
+          </div>
+          <div class="bill-c-sub">
+            <span class="chip" id="home-bill-cycle">—</span>
+            <span class="text-link">View forecast →</span>
+          </div>
+        </button>
+
+        <!-- ENERGY CHART -->
+        <div class="card span-2">
+          <div class="card-head">
+            <h3>Energy usage today</h3>
+            <div class="range-tabs" role="tablist" aria-label="Chart time range">
+              <button class="range active" data-range="today">Today</button>
+              <button class="range" data-range="week">Week</button>
+              <button class="range" data-range="month">Month</button>
+            </div>
+          </div>
+          <div id="home-chart-wrap" class="chart-wrap">
+            <div id="home-chart" class="line-chart" role="img" aria-label="Energy usage over time"></div>
+          </div>
+          <div class="chart-meta" id="home-chart-meta">
+<span id="home-chart-peak">Peak: <b>—</b></span>
+<span class="chart-total" id="home-chart-total">Total today: —</span>
+          </div>
+          <div class="chart-labels" id="home-labels"></div>
+        </div>
+
+        <!-- WHAT CHANGED TODAY -->
+        <div class="card span-2">
+          <div class="card-head">
+            <h3>What changed today?</h3>
+            <span class="chip" id="what-changed-chip">—</span>
+          </div>
+          <div id="what-changed" class="changed-list"></div>
+          <p class="why-sentence" id="changed-sentence"></p>
+        </div>
+
+        <!-- TOP CONSUMERS -->
+        <div class="card">
+          <div class="card-head">
+            <h3>Top energy consumers</h3>
+            <button class="text-link" data-go="Appliances">View all →</button>
+          </div>
+          <div class="donut-wrap">
+            <div id="donut" class="donut" role="img" aria-label="Share of today's usage by appliance"></div>
+          </div>
+          <div id="consumers-bars"></div>
+        </div>
+
+        <!-- WHEN DO YOU USE THE MOST -->
+        <div class="card">
+          <div class="card-head"><h3>When do you use the most energy?</h3></div>
+          <p class="peak-text" id="peak-text">Loading peak usage…</p>
+          <div id="peak-seg" class="peak-seg"></div>
+          <div class="peak-legend">
+            <span><i class="dot low"></i>Low</span>
+            <span><i class="dot med"></i>Medium</span>
+            <span><i class="dot high"></i>High</span>
+          </div>
+          <p class="peak-note" id="peak-note"></p>
+        </div>
+
+        <!-- WHY YOUR USAGE CHANGED -->
+        <div class="card accent span-2">
+          <div class="insight-badge" data-ico="bulb"></div>
+          <p class="eyebrow-accent">Why your usage changed</p>
+<p class="insight-text" id="home-insight">Analysing today's usage…</p>
+<div id="home-insight-bars" class="cmp-chart"></div>
+<p class="insight-sub" id="home-insight-sub"></p>
+<div class="insight-actions">
+  <button class="btn-ghost" data-open-why="">How we calculated this →</button>
+            <button class="btn-why" data-go="Insights" data-tab="recommend">What can I do? →</button>
+          </div>
+        </div>
+
+        <!-- RECOMMENDATION -->
+        <div class="card span-2">
+          <div class="card-head"><h3>Recommended for you</h3></div>
+          <div class="rec-detail" id="home-recommendation"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: APPLIANCES ============ -->
+    <section class="screen" id="screen-Appliances">
+      <header class="appbar">
+        <button class="icon-btn menu-btn" data-open-sidebar aria-label="Open menu" data-ico="menu"></button>
+        <div>
+          <p class="eyebrow">Household</p>
+          <h1>My appliances</h1>
+        </div>
+        <button class="icon-btn" data-open-add aria-label="Explore an appliance" data-ico="plus"></button>
+      </header>
+      <div class="content">
+        <div id="appliances-slot" class="span-2"></div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: APPLIANCE DETAIL ============ -->
+    <section class="screen" id="screen-Detail">
+      <header class="appbar detail">
+        <button class="icon-btn back" id="detail-back" aria-label="Back" data-ico="arrow-left"></button>
+        <div class="detail-title">
+          <h1 id="detail-name">AC</h1>
+          <span id="detail-status" class="status running">● Running</span>
+        </div>
+        <button class="icon-btn" id="detail-menu" aria-label="More options" data-ico="dots"></button>
+      </header>
+      <div class="content">
+        <div class="hero detail-hero span-2">
+          <div class="hero-head">
+            <div>
+              <p class="hero-label">Latest recorded usage</p>
+              <span class="dataset-ctx" id="detail-ctx"></span>
+            </div>
+            <span class="chip" id="detail-perhour">—/hour</span>
+          </div>
+          <div class="hero-value" id="detail-watts">—<span class="hero-unit">kW</span></div>
+          <p class="hero-explain" id="detail-watts-note">Loading…</p>
+          <p class="cost-note" id="detail-tariff-note">Estimated at your tariff</p>
+          <div class="detail-stats">
+            <div class="stat"><span class="muted">Today's usage</span><b id="detail-today">—</b></div>
+            <div class="stat"><span class="muted">Accumulated cost</span><b id="detail-cost">—</b></div>
+            <div class="stat"><span class="muted">vs yesterday</span><b class="up" id="detail-diff">—</b></div>
+            <div class="stat"><span class="muted">Share today</span><b id="detail-share">—</b></div>
+          </div>
+        </div>
+
+        <div class="card span-2">
+          <div class="card-head">
+            <h3 id="detail-chart-title">Energy usage today</h3>
+            <div class="range-tabs" role="tablist" aria-label="Detail chart range">
+              <button class="range active" data-drange="today">Today</button>
+              <button class="range" data-drange="7d">7 days</button>
+              <button class="range" data-drange="30d">30 days</button>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div id="detail-chart" class="line-chart" role="img" aria-label="Appliance usage over time"></div>
+          </div>
+          <div class="detail-chart-stats" id="detail-chart-stats"></div>
+          <div class="chart-labels" id="detail-labels"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Why is usage higher?</h3></div>
+          <p class="why-sentence" id="detail-why"></p>
+          <button class="btn-ghost" id="detail-why-btn">See full explanation →</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Recommended action</h3></div>
+          <div id="detail-rec"></div>
+        </div>
+
+        <div class="card span-2">
+          <button class="tech-toggle" id="tech-toggle" aria-expanded="false">
+            <span>Technical details</span><span class="chev" data-ico="chevron-down"></span>
+          </button>
+          <div id="tech-panel" class="tech-panel" hidden>
+            <div id="tech-grid" class="tech-grid"></div>
+          </div>
+        </div>
+
+        <div class="danger-zone" id="danger-zone" hidden>
+          <button class="btn-danger" id="btn-remove-appliance">Remove this appliance</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: INSIGHTS ============ -->
+    <section class="screen" id="screen-Insights">
+      <header class="appbar">
+        <button class="icon-btn menu-btn" data-open-sidebar aria-label="Open menu" data-ico="menu"></button>
+        <div>
+          <p class="eyebrow">Understand your energy</p>
+          <h1>Insights</h1>
+        </div>
+      </header>
+      <div class="content">
+        <div class="seg-tabs span-2" role="tablist" aria-label="Insight topics">
+          <button class="seg active" data-tab="usage">Usage</button>
+          <button class="seg" data-tab="patterns">Patterns</button>
+          <button class="seg" data-tab="recommend">Recommendations</button>
+          <button class="seg" data-tab="goals">Goals</button>
+        </div>
+
+        <!-- USAGE -->
+        <div id="tab-usage" class="tab-pane span-2 active">
+          <div class="pane-head"><p class="pane-question">How much energy are you using?</p></div>
+          <div class="card">
+            <div class="card-head"><h3>Energy used over 30 days</h3><span class="card-sub" id="m-proj">Dataset window</span></div>
+            <div class="month-box">
+              <div><span class="muted">Used over 30 days</span><p class="big-num" id="m-usage">—</p></div>
+              <div><span class="muted">Average daily usage</span><p class="big-num" id="m-avg">—</p></div>
+            </div>
+            <p class="month-note" id="m-note">Loading…</p>
+            <p class="month-note" id="m-usage-sub"></p>
+          </div>
+
+          <div class="card span-2 forecast-card">
+            <div class="card-head">
+              <h3>Expected electricity bill</h3>
+              <button class="icon-btn" data-open-forecast-info aria-label="How is this estimated?" data-ico="info"></button>
+            </div>
+            <div class="fc-hero">
+              <div>
+                <span class="muted" id="fc-cycle-label">Expected monthly bill</span>
+                <p class="fc-amount" id="fc-amount">₹—</p>
+                <p class="fc-sub" id="fc-sub"></p>
+                <div id="fc-mo"></div>
+              </div>
+            </div>
+            <p class="fc-note" id="fc-note"></p>
+            <div class="fc-actions">
+              <button class="btn-ghost" data-open-forecast-info>ⓘ How is this estimated?</button>
+              <button class="btn-ghost" data-open-bill-breakdown>Estimated bill breakdown</button>
+            </div>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head"><h3>Monthly estimate vs billing cycle</h3></div>
+            <div class="compare-cycles" id="compare-cycles"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>Daily vs yesterday</h3></div>
+            <div class="compare-days" id="compare-days"></div>
+          </div>
+          <div id="month-chart" class="card span-2" role="img" aria-label="Daily energy usage over 30 days"></div>
+          <div class="chart-labels span-2" id="month-labels"></div>
+          <div class="card span-2">
+            <div class="card-head"><h3>This week</h3><span class="card-sub" id="week-sum">—</span></div>
+            <div id="insight-week-chart" class="bar-chart"></div>
+            <div class="chart-labels" id="insight-week-labels"></div>
+          </div>
+        </div>
+
+        <!-- PATTERNS -->
+        <div id="tab-patterns" class="tab-pane span-2">
+          <div class="pane-head"><p class="pane-question">When and where do you use the most energy?</p></div>
+          <div class="card accent">
+            <div class="insight-badge" data-ico="clock"></div>
+            <p class="peak-text" id="peak-text-p">Loading peak usage…</p>
+            <p class="peak-note" id="peak-note-p"></p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Your energy usage throughout the day</h3></div>
+            <div id="hour-chart" class="line-chart"></div>
+            <div class="chart-labels"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Weekday vs weekend</h3></div>
+            <div id="weekday-chart" class="bar-chart"></div>
+            <div class="chart-labels"><span>Weekday</span><span>Weekend</span></div>
+          </div>
+        </div>
+
+        <!-- RECOMMENDATIONS -->
+        <div id="tab-recommend" class="tab-pane span-2">
+          <div class="pane-head"><p class="pane-question">What can you do to reduce usage?</p></div>
+          <div id="rec-list" class="rec-grid span-2"></div>
+        </div>
+
+        <!-- GOALS -->
+        <div id="tab-goals" class="tab-pane span-2">
+          <div class="pane-head"><p class="pane-question">Are you improving?</p></div>
+          <div class="card">
+            <div class="card-head"><h3>Savings goal</h3><button class="text-link" id="goal-edit">Edit</button></div>
+            <div class="goal-box">
+              <p class="goal-num" id="goal-used">—<span> / — kWh target</span></p>
+              <div class="goal-bar"><span id="goal-bar-fill"></span></div>
+              <p class="goal-left" id="goal-left">—</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Energy score</h3><span class="card-sub" id="score-delta">—</span></div>
+            <div class="score-row">
+              <div class="score-big">
+                <span class="score-num big" id="score-num-2">—</span>
+                <span class="score-label" id="score-label">—</span>
+              </div>
+              <div class="score-factors" id="score-factors"></div>
+            </div>
+            <p class="score-why" id="score-why"></p>
+            <button class="btn-ghost" data-open-score>How is my score calculated?</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCREEN: PROFILE ============ -->
+    <section class="screen" id="screen-Profile">
+      <header class="appbar">
+        <button class="icon-btn menu-btn" data-open-sidebar aria-label="Open menu" data-ico="menu"></button>
+        <div>
+          <p class="eyebrow">Account</p>
+          <h1>Profile</h1>
+        </div>
+      </header>
+      <div class="content">
+        <div class="card profile-head span-2">
+          <div class="avatar lg">D</div>
+          <div>
+            <h3>Demo User</h3>
+            <p class="muted">iAWE Household Dataset</p>
+            <span class="chip" id="household-chip">Household · — appliances</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Appearance</h3></div>
+          <div class="setting">
+            <span class="setting-label" data-ico="moon">Dark mode</span>
+            <label class="switch"><input type="checkbox" id="dark-toggle" checked><span class="slider"></span></label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Energy settings</h3></div>
+          <button class="list-row" data-open-tariff>
+            <span class="list-label" data-ico="bolt">State &amp; electricity tariff</span>
+            <span class="list-value" id="tariff-value">— <span class="chev">›</span></span>
+          </button>
+          <div class="list-row-static">
+            <span class="list-label">Provider</span>
+            <span class="list-value" id="ts-provider">—</span>
+          </div>
+          <div class="list-row-static">
+            <span class="list-label">Billing cycle</span>
+            <span class="list-value" id="ts-cycle">—</span>
+          </div>
+          <div class="list-row-static">
+            <span class="list-label">Expected bill period</span>
+            <span class="list-value" id="ts-period">—</span>
+          </div>
+          <div class="list-row-static">
+            <span class="list-label">Avg effective rate</span>
+            <span class="list-value" id="ts-rate">—</span>
+          </div>
+          <div class="list-row-static">
+            <span class="list-label">Fixed charge</span>
+            <span class="list-value" id="ts-fixed">—</span>
+          </div>
+          <button class="list-row" data-open-tariff-details>
+            <span class="list-label" data-ico="file">View tariff details</span>
+            <span class="chev">›</span>
+          </button>
+          <button class="list-row" data-go="Insights" data-tab="goals">
+            <span class="list-label" data-ico="target">Savings goal</span>
+            <span class="list-value" id="goal-value">— <span class="chev">›</span></span>
+          </button>
+          <button class="list-row" data-open-notif>
+            <span class="list-label" data-ico="bell">Notifications</span>
+            <span class="list-value">On <span class="chev">›</span></span>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Data &amp; privacy</h3></div>
+          <button class="list-row" data-open-modal="privacy">
+            <span class="list-label" data-ico="shield">Privacy settings</span>
+            <span class="chev">›</span>
+          </button>
+          <button class="list-row" data-open-modal="download">
+            <span class="list-label" data-ico="download">Download my data</span>
+            <span class="chev">›</span>
+          </button>
+          <button class="list-row danger-row" data-open-modal="delete">
+            <span class="list-label" data-ico="trash">Delete my data</span>
+            <span class="chev">›</span>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>About</h3></div>
+          <button class="list-row" data-open-modal="about">
+            <span class="list-label" data-ico="info">About Smart Energy</span>
+            <span class="chev">›</span>
+          </button>
+          <button class="list-row" data-open-modal="terms">
+            <span class="list-label" data-ico="file">Terms &amp; privacy policy</span>
+            <span class="chev">›</span>
+          </button>
+          <button class="list-row">
+            <span class="list-label" data-ico="tag">Version</span>
+            <span class="list-value">1.0.0 <span class="chev">›</span></span>
+          </button>
+        </div>
+
+        <button class="btn-ghost" data-replay-onboarding>Replay onboarding</button>
+      </div>
+    </section>
+
+    <!-- BOTTOM NAV (mobile) -->
+    <nav class="bottom-nav" aria-label="Primary navigation">
+      <button class="nav-item active" data-nav="Home">
+        <span class="nav-ico" data-ico="home"></span><span>Home</span>
+      </button>
+      <button class="nav-item" data-nav="Appliances">
+        <span class="nav-ico" data-ico="plug"></span><span>Appliances</span>
+      </button>
+      <button class="nav-item" data-nav="Insights">
+        <span class="nav-ico" data-ico="bulb"></span><span>Insights</span>
+      </button>
+      <button class="nav-item" data-nav="Profile">
+        <span class="nav-ico" data-ico="user"></span><span>Profile</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ================= ONBOARDING ================= -->
+  <div id="onboarding" class="onboarding" hidden>
+    <div class="onb-inner">
+      <div class="onb-top">
+        <div class="onb-brand"><span class="brand-ico" data-ico="bolt"></span><b>Smart Energy</b></div>
+        <button class="onb-skip" id="onb-skip">Skip</button>
+      </div>
+      <div class="onb-slides" id="onb-slides">
+        <div class="onb-slide active">
+          <div class="onb-art" data-ico="bolt"></div>
+          <h2>See where your electricity goes</h2>
+          <p>Turn every watt into an answer — how much you use, what it costs, and where it's going.</p>
+        </div>
+        <div class="onb-slide">
+          <div class="onb-art" data-ico="plug"></div>
+          <h2>Identify your biggest consumers</h2>
+          <p>Know which appliances cost you the most and when your usage peaks.</p>
+        </div>
+        <div class="onb-slide">
+          <div class="onb-art" data-ico="bulb"></div>
+          <h2>Make smarter decisions</h2>
+          <p>Get personalized, data-backed recommendations and see exactly what you could save.</p>
+        </div>
+        <div class="onb-slide">
+          <div class="onb-art" data-ico="plug"></div>
+          <h2>Explore your energy</h2>
+          <p>See how much energy your appliances use, what they cost, and when your usage peaks.</p>
+        </div>
+      </div>
+      <div class="onb-dots" id="onb-dots"></div>
+      <button class="btn-why onb-next" id="onb-next">Get Started →</button>
+    </div>
+  </div>
+
+  <!-- ================= GENERIC MODAL ================= -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-scrim" data-close-modal></div>
+    <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="Details">
+      <div class="modal-head">
+        <h2 id="modal-title">Details</h2>
+        <button class="icon-btn" data-close-modal aria-label="Close" data-ico="close"></button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ================= ADD APPLIANCE FLOW ================= -->
+  <div id="add-flow" class="modal" hidden>
+    <div class="modal-scrim" data-close-add></div>
+    <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="Explore an appliance">
+      <div class="modal-head">
+        <h2 id="add-title">Explore an appliance</h2>
+        <button class="icon-btn" data-close-add aria-label="Close" data-ico="close"></button>
+      </div>
+      <div id="add-body" class="modal-body"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SVG sprite (consistent stroke icon set) -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v5"/><path d="M15 2v5"/><path d="M7 7h10v4a5 5 0 0 1-5 5h0a5 5 0 0 1-5-5V7Z"/><path d="M12 16v5"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 1 3.5 10.9c-.8.6-1.5 1.4-1.5 2.6v.5H10v-.5c0-1.2-.7-2-1.5-2.6A6 6 0 0 1 12 3Z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M2 2l20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.5a10 10 0 0 1 3.5-2.4M16.5 10.1a10 10 0 0 1 2.5 2.4"/><path d="M12 20h.01"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6V3Z"/><path d="M14 3v6h6"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="8" cy="8" r="1.6"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M4 20C4 9 10 4 20 4c0 10-5 16-16 16Z"/><path d="M4 20c4-6 8-9 13-12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 21 20H3L12 4Z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 3v18M4 7l16 10M20 7 4 17"/><path d="M12 3l-2 2M12 3l2 2M12 21l-2-2M12 21l2-2"/></symbol>
+  <symbol id="i-fridge" viewBox="0 0 24 24"><path d="M6 3h12v18H6V3Z"/><path d="M6 9h12M10 6v3M10 13v4"/></symbol>
+  <symbol id="i-fan" viewBox="0 0 24 24"><path d="M12 12m-2.5 0a2.5 2.5 0 1 0 5 0 2.5 2.5 0 1 0-5 0"/><path d="M12 9.5C14 7.5 16 7 16 5c0-1.5-1-2-2-1.5M14.5 12c2-1 5-1.5 6-2.5s.5-3-1-3.5M12 14.5c-2 1-5 1.5-6 2.5s-.5 3 1 3.5"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-washer" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6h.01M11 6h.01"/></symbol>
+  <symbol id="i-ac" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 9.5h10"/><path d="M7 13.5h10"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 20h20M9 20l1-4h4l1 4"/></symbol>
+  <symbol id="i-iron" viewBox="0 0 24 24"><path d="M7 7h8l3 5H8a5 5 0 0 0-5 5v-7c0-1.7 1.3-3 3-3Z"/><path d="M7 7V5h5l1 2"/></symbol>
+  <symbol id="i-kitchen" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3.2"/><circle cx="16" cy="8" r="3.2"/><circle cx="8" cy="16" r="3.2"/><circle cx="16" cy="16" r="3.2"/></symbol>
+  <symbol id="i-water" viewBox="0 0 24 24"><path d="M12 3s6 6.2 6 10a6 6 0 0 1-12 0c0-3.8 6-10 6-10Z"/><path d="M9.5 14a2.8 2.8 0 0 0 2 2.5"/></symbol>
+  <symbol id="i-motor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12 12 6M12 12l5 3"/><path d="M12 12 7 15"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17 9 11l4 4 7-8"/><path d="M15 7h5v5"/></symbol>
+</svg>
+
+<script src="data/energy-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
