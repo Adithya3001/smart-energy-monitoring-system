@@ -24,7 +24,7 @@ const APPLIANCE_ICONS = {
   iron: 'iron', kitchen: 'kitchen', tv: 'tv', wfilter: 'water', wmotor: 'motor'
 };
 function icon(name, size) {
-  return `<svg width="${size || 20}" height="${size || 20}" aria-hidden="true"><use href="#i-${ICONS[name] || name}"/></svg>`;
+  return `<svg class="se-icon" width="${size || 20}" height="${size || 20}" aria-hidden="true"><use href="#i-${ICONS[name] || name}"/></svg>`;
 }
 function injectIcons(scope = document) {
   scope.querySelectorAll('[data-ico]').forEach(el => {
@@ -47,9 +47,9 @@ function injectIcons(scope = document) {
 const DATA = window.ENERGY_DATA || null;
 
 let tariff = Number(localStorage.getItem('se-tariff') || (DATA ? DATA.tariff : 8));
-let theme = localStorage.getItem('se-theme') || 'dark';
+let theme = localStorage.getItem('se-theme') || 'light';
 
-const APP_COLORS = ['#0fb981', '#4f7cff', '#f5b83d', '#e5484d', '#9a6cf0', '#38bdf8', '#fb7185', '#34d399', '#a3a3a3', '#f59e0b'];
+const APP_COLORS = ['#245A44', '#5B8266', '#C05A3E', '#B87C24', '#4E6047', '#316B58', '#8B6A53', '#6A8675', '#A27B5C', '#667761'];
 
 /* ---------- Centralized heuristic constants (single source, from pipeline) ---------- */
 const CONFIG = (DATA && DATA.config) ? DATA.config : {
@@ -349,7 +349,7 @@ function buildNotifications() {
     list.push({ ico: 'alert', type: 'warn', title: 'Large consumer', msg: `${top.name} is ${top.sharePct}% of today's usage (${top.kwh.toFixed(1)} kWh).`, time: 'today' });
   }
   if (DATA.peakUsage.eveningShare >= ncfg.eveningWarn) {
-    list.push({ ico: 'trend', type: 'info', title: 'Evening peak', msg: `${Math.round(DATA.peakUsage.eveningShare * 100)}% of today's usage falls in the 7–11 PM window.`, time: 'today' });
+    list.push({ ico: 'trend', type: 'info', title: 'Evening peak', msg: `${Math.round(DATA.peakUsage.eveningShare * 100)}% of today's usage falls in the ${peakWindowLabel()} window.`, time: 'today' });
   }
   if (GOAL.targetKwh > 0) {
     const over = GOAL.overKwh > 0;
@@ -458,7 +458,15 @@ function hourLabel(i) {
   return i < 12 ? `${i} AM` : `${i - 12} PM`;
 }
 
+function peakWindowLabel() {
+  if (CONFIG && Array.isArray(CONFIG.peakWindow) && CONFIG.peakWindow.length === 2) {
+    return `${hourLabel(CONFIG.peakWindow[0])} – ${hourLabel(CONFIG.peakWindow[1])}`;
+  }
+  return '7 PM – 11 PM';
+}
+
 function lineChart(el, data, { peakIndex = -1, unit = 'kWh', labels = null } = {}) {
+  el.classList.remove('bar-chart');
   const W = 800, H = 180, PAD = 8;
   const max = Math.max(...data);
   const min = Math.min(...data);
@@ -564,10 +572,33 @@ function renderHome() {
   $('#hero-yesterday').textContent = fmtKwh(yesterdayKwh) + ' kWh';
   const goalOver = GOAL.overKwh > 0;
   const goalPct = GOAL.targetKwh > 0 ? Math.min(100, GOAL.usedKwh / GOAL.targetKwh * 100) : 0;
-  $('#goal-mini-num').textContent = `${fmtKwh(GOAL.usedKwh)} / ${fmtKwh(GOAL.targetKwh)} kWh`;
-  $('#goal-mini-num').classList.toggle('over', goalOver);
-  $('#goal-mini-bar').style.width = goalPct + '%';
-  $('#goal-mini-bar').parentElement.classList.toggle('over', goalOver);
+  const goalStr = `${fmtKwh(GOAL.usedKwh)} / ${fmtKwh(GOAL.targetKwh)} kWh`;
+  const gmn = $('#goal-mini-num');
+  if (gmn) {
+    gmn.textContent = goalStr;
+    gmn.classList.toggle('over', goalOver);
+  }
+  const gmb = $('#goal-mini-bar');
+  if (gmb) {
+    gmb.style.width = goalPct + '%';
+    if (gmb.parentElement) gmb.parentElement.classList.toggle('over', goalOver);
+  }
+  const hga = $('#home-goal-amt');
+  if (hga) {
+    hga.textContent = goalStr;
+    hga.classList.toggle('over', goalOver);
+  }
+  const hgb = $('#home-goal-bar');
+  if (hgb) {
+    hgb.style.width = goalPct + '%';
+    if (hgb.parentElement) hgb.parentElement.classList.toggle('over', goalOver);
+  }
+  const hgd = $('#home-goal-desc');
+  if (hgd) {
+    hgd.textContent = goalOver
+      ? `${fmtKwh(GOAL.overKwh)} kWh over target · adjust habits`
+      : `${fmtKwh(GOAL.remainingKwh)} kWh remaining in budget`;
+  }
   $('#score-num').textContent = score.value;
 
   renderHomeChart(homeRange);
@@ -590,12 +621,17 @@ function renderPeak() {
     return `<div class="seg-part ${cls}" title="${v.toFixed(2)} kWh"></div>`;
   }).join('');
   const pct = Math.round(p.eveningShare * 100);
-  $('#peak-text').innerHTML = `<b>${pct}% of today's usage</b> falls between <b>7 PM – 11 PM</b>.`;
+  const win = peakWindowLabel();
+  $('#peak-text').innerHTML = `<b>${pct}% of today's usage</b> falls between <b>${win}</b>.`;
   $('#peak-note').innerHTML = `Peak hour is <b>${p.peakLabel}</b> (${p.peakKwh.toFixed(1)} kWh) · lowest usage is around <b>${p.lowestHour}</b>.`;
   const pt = $('#peak-text-p');
-  if (pt) pt.innerHTML = `Your highest energy usage occurs between <b>7 PM – 11 PM</b> · <b>${pct}%</b> of today's total.`;
+  if (pt) pt.innerHTML = `Your highest energy usage occurs between <b>${win}</b> · <b>${pct}%</b> of today's total.`;
   const pn = $('#peak-note-p');
   if (pn) pn.innerHTML = `Peak hour is <b>${p.peakLabel}</b> (${p.peakKwh.toFixed(1)} kWh) · lowest usage is around <b>${p.lowestHour}</b>.`;
+  const php = $('#peak-hours-pill');
+  if (php) php.innerHTML = `<span class="pulse-dot"></span> Peak ${win}`;
+  const hpt = $('#home-peak-tick');
+  if (hpt) hpt.textContent = `${win} Peak`;
 }
 
 function greeting() {
@@ -609,6 +645,12 @@ function renderHomeChart(range) {
   const el = $('#home-chart');
   const labels = $('#home-labels');
   const totalEl = $('#home-chart-total');
+  const sub = $('#chart-time-sub');
+  if (sub) {
+    sub.textContent = range === 'today' ? 'Hourly consumption profile'
+      : range === 'week' ? 'Daily consumption over 7 days'
+      : 'Daily consumption over 30 days';
+  }
 
   if (range === 'today') {
     const { peak } = lineChart(el, hourly, { peakIndex: peakHourIndex, labels: hourly.map((_, i) => hourLabel(i)) });
@@ -829,68 +871,150 @@ function renderAppliances() {
   if (list.length === 0) {
     slot.innerHTML = `
       <div class="empty-state span-2">
-        <span class="empty-ico" data-ico="plug"></span>
+        <div class="empty-ico"><span data-ico="plug"></span></div>
         <h3>No appliances in your view</h3>
         <p>Explore the appliances in the dataset to preview their recorded usage.</p>
-        <button class="btn-why" data-open-add>Explore appliances</button>
-        <p class="muted" style="font-size:11px">Prototype interaction — nothing is physically connected.</p>
+        <button class="btn-primary" data-open-add><span data-ico="plus"></span> Explore appliances</button>
+        <p class="muted" style="font-size:11.5px;margin-top:var(--s1)">Prototype interaction — nothing is physically connected.</p>
       </div>`;
     injectIcons(slot);
     return;
   }
 
   const compare = list.map(a => ({
-    id: a.id, name: a.short, today: a.today, yesterday: a.yesterday,
+    id: a.id, name: a.short, ico: a.ico, today: a.today, yesterday: a.yesterday,
     diffKwh: +(a.today - a.yesterday).toFixed(2)
   }));
 
   slot.innerHTML = `
-    <div class="card span-2">
+    <div class="card compare-card span-2">
       <div class="card-head">
-        <h3>Comparison vs yesterday</h3>
-        <span class="card-sub">Recorded kWh for the dataset day</span>
+        <div>
+          <h3>Comparison vs yesterday</h3>
+          <span class="card-sub">Recorded kWh for the dataset day</span>
+        </div>
       </div>
-      <div class="table-scroll">
-      <table class="compare-table">
-        <thead><tr><th>Appliance</th><th>Today</th><th>Yesterday</th><th>Change</th></tr></thead>
-        <tbody>
-          ${compare.map(r => `
-            <tr data-go-detail="${r.id}">
-              <td>${r.name}</td><td>${fmtKwh(r.today)} kWh</td><td>${fmtKwh(r.yesterday)} kWh</td>
-              <td class="${r.diffKwh > 0 ? 'up' : r.diffKwh < 0 ? 'down' : ''}">
-                ${r.diffKwh > 0 ? '▲' : r.diffKwh < 0 ? '▼' : '—'} ${fmtKwh(Math.abs(r.diffKwh))} kWh
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
+
+      <!-- Desktop Comparison Table (>= 768px) -->
+      <div class="table-scroll desktop-compare-table">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th class="th-appliance">Appliance</th>
+              <th class="th-today">Today</th>
+              <th class="th-yesterday">Yesterday</th>
+              <th class="th-change">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${compare.map(r => `
+              <tr data-go-detail="${r.id}">
+                <td class="td-appliance">
+                  <div class="compare-app-cell">
+                    <span class="compare-app-ico">${icon(r.ico, 18)}</span>
+                    <span class="compare-app-name">${r.name}</span>
+                  </div>
+                </td>
+                <td class="td-today" data-label="Today">
+                  <span class="val-num">${fmtKwh(r.today)}</span> <span class="val-unit">kWh</span>
+                </td>
+                <td class="td-yesterday" data-label="Yesterday">
+                  <span class="val-num">${fmtKwh(r.yesterday)}</span> <span class="val-unit">kWh</span>
+                </td>
+                <td class="td-change" data-label="Change">
+                  <span class="delta-badge ${r.diffKwh > 0 ? 'up' : r.diffKwh < 0 ? 'down' : 'flat'}">
+                    ${r.diffKwh > 0 ? '▲ +' : r.diffKwh < 0 ? '▼ -' : '— '}${fmtKwh(Math.abs(r.diffKwh))} kWh
+                  </span>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile Comparison Cards (<= 767px) -->
+      <div class="mobile-compare-list">
+        ${compare.map(r => `
+          <div class="mobile-compare-card" data-go-detail="${r.id}">
+            <div class="m-comp-head">
+              <div class="m-comp-device">
+                <span class="m-comp-ico">${icon(r.ico, 18)}</span>
+                <span class="m-comp-name">${r.name}</span>
+              </div>
+              <span class="delta-badge ${r.diffKwh > 0 ? 'up' : r.diffKwh < 0 ? 'down' : 'flat'}">
+                ${r.diffKwh > 0 ? '▲ +' : r.diffKwh < 0 ? '▼ -' : '— '}${fmtKwh(Math.abs(r.diffKwh))} kWh
+              </span>
+            </div>
+            <div class="m-comp-body">
+              <div class="m-comp-col">
+                <span class="m-comp-lbl">Today's usage</span>
+                <span class="m-comp-val"><b>${fmtKwh(r.today)}</b> <small>kWh</small></span>
+              </div>
+              <div class="m-comp-divider" aria-hidden="true"></div>
+              <div class="m-comp-col">
+                <span class="m-comp-lbl">Yesterday</span>
+                <span class="m-comp-val"><b>${fmtKwh(r.yesterday)}</b> <small>kWh</small></span>
+              </div>
+            </div>
+          </div>`).join('')}
       </div>
     </div>
 
-    <p class="appl-section-title span-2">All appliances</p>
+    <div class="appl-section-header span-2">
+      <h3 class="appl-section-title">All appliances</h3>
+      <span class="appl-count-badge">${list.length} active</span>
+    </div>
     <div class="appl-list span-2">
-      ${list.map(a => `
+      ${list.map(a => {
+        const diff = +(a.today - a.yesterday).toFixed(2);
+        const statusClass = a.status === 'Running' ? 'running' : a.status === 'Idle' ? 'idle' : a.status === 'No data' ? 'nodata' : 'off';
+        return `
         <div class="appl-card" data-go-detail="${a.id}">
-          <span class="appl-ico">${icon(a.ico, 26)}</span>
-          <div class="appl-info">
-            <div class="appl-name">${a.name}</div>
-            <div class="appl-sub">${a.watts > 0 ? `${fmtKwh(a.watts / 1000)} kW · ` : ''}${fmtKwh(a.today)} kWh recorded</div>
-          </div>
-          <div class="appl-right">
-            <div class="appl-kwh">${money(a.today)}</div>
-            <div class="status ${a.status === 'Running' ? 'running' : 'off'}">● ${a.status}</div>
-            <div class="appl-change ${a.today - a.yesterday > 0 ? 'up' : a.today - a.yesterday < 0 ? 'down' : ''}">
-              ${fmtDelta(a.today, a.yesterday)} vs yesterday
+          <!-- Top Row: Identity & Status -->
+          <div class="appl-header">
+            <div class="appl-ico" aria-hidden="true">${icon(a.ico, 24)}</div>
+            <div class="appl-title-group">
+              <span class="appl-name">${a.name}</span>
+              <span class="status status-badge ${statusClass}">
+                <span class="status-dot"></span>${a.status}
+              </span>
             </div>
           </div>
-        </div>`).join('')}
+
+          <!-- Middle Row: Usage & Power draw -->
+          <div class="appl-metrics">
+            <div class="appl-metric-main">
+              <span class="appl-kwh-rec val-highlight">${fmtKwh(a.today)} kWh</span>
+              ${a.watts > 0 ? `<span class="appl-power">${fmtKwh(a.watts / 1000)} kW live draw</span>` : `<span class="appl-power muted">No current draw</span>`}
+            </div>
+            <div class="appl-cost-box">
+              <span class="appl-kwh appl-cost-val">${money(a.today)}</span>
+              <span class="appl-cost-sub">est. cost</span>
+            </div>
+          </div>
+
+          <!-- Bottom Row: Day-over-day change -->
+          <div class="appl-footer">
+            <div class="appl-change appl-delta-pill ${diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat'}">
+              ${diff > 0 ? `▲ +${fmtKwh(diff)}` : diff < 0 ? `▼ -${fmtKwh(Math.abs(diff))}` : '— 0.00'} kWh vs yesterday
+            </div>
+            <div class="appl-arrow" aria-hidden="true">${icon('arrow-right', 16)}</div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
 
-    <div class="card span-2">
-      <div class="empty-state" style="padding: var(--s4)">
-        <p style="color:var(--text-2);font-size:14px">Explore another appliance from the dataset</p>
-        <button class="btn-ghost" data-open-add>${icon('plus', 18)} Explore an appliance</button>
-        <p class="muted" style="font-size:11px;margin-top:4px">Prototype interaction — nothing is physically connected.</p>
+    <div class="card appl-explore-card span-2">
+      <div class="explore-card-content">
+        <div class="explore-card-ico" aria-hidden="true">${icon('plus', 22)}</div>
+        <div class="explore-card-text">
+          <h4>Explore other household appliances</h4>
+          <p>Preview recorded consumption and load patterns for additional appliances from the dataset.</p>
+        </div>
+        <button class="btn-primary explore-card-btn" data-open-add>
+          ${icon('plus', 16)} <span>Explore Appliances</span>
+        </button>
       </div>
+      <p class="explore-card-footnote">Prototype interaction · Synthesized from iAWE dataset readings</p>
     </div>`;
   injectIcons(slot);
 }
@@ -908,7 +1032,7 @@ function renderDetail(id) {
   currentDetailId = a.id;
   $('#detail-name').textContent = a.short;
   $('#detail-status').textContent = '● ' + a.status;
-  $('#detail-status').className = 'status ' + (a.status === 'Running' ? 'running' : 'off');
+  $('#detail-status').className = 'status status-badge ' + (a.status === 'Running' ? 'running' : a.status === 'Idle' ? 'idle' : a.status === 'No data' ? 'nodata' : 'off');
   const ctx = $('#detail-ctx');
   if (ctx && !ctx.textContent) ctx.textContent = datasetDayLabel();
   $('#detail-watts').innerHTML = a.watts > 0 ? `${fmtKwh(a.watts / 1000)}<span class="hero-unit">kW</span>` : `0<span class="hero-unit">kW</span>`;
@@ -924,8 +1048,8 @@ function renderDetail(id) {
   $('#detail-today').textContent = fmtKwh(a.today) + ' kWh';
   $('#detail-cost').textContent = money(a.today);
   const diff = +(a.today - a.yesterday).toFixed(2);
-  $('#detail-diff').textContent = diff > 0 ? `▲ ${fmtKwh(diff)} kWh` : diff < 0 ? `▼ ${fmtKwh(-diff)} kWh` : '—';
-  $('#detail-diff').className = 'stat ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : '');
+  $('#detail-diff').textContent = diff > 0 ? `▲ +${fmtKwh(diff)} kWh` : diff < 0 ? `▼ -${fmtKwh(-diff)} kWh` : '— 0.00 kWh';
+  $('#detail-diff').className = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
   $('#detail-share').textContent = Math.round(a.today / todayKwh * 100) + '%';
 
   renderDetailChart(a, detailRange);
@@ -935,7 +1059,7 @@ function renderDetail(id) {
   $('#detail-why-btn').dataset.openWhy = a.id;
 
   $('#tech-grid').innerHTML = a.tech.map(([k, v]) =>
-    `<div class="tech-item"><span>${k}</span><b>${v}</b></div>`).join('');
+    `<div class="tech-item"><span class="tech-k">${k}</span><b class="tech-v">${v}</b></div>`).join('');
   $('#danger-zone').hidden = removedAppliances.has(a.id);
 }
 
@@ -950,11 +1074,11 @@ function renderDetailChart(a, range) {
     const hs = scaleSum(a.hours, a.today);
     lineChart(el, hs, { peakIndex: hs.indexOf(Math.max(...hs)), labels: hs.map((_, i) => hourLabel(i)) });
     stats.innerHTML = `
-      <div class="dstat"><span>Recorded today</span><b>${fmtKwh(a.today)} kWh</b></div>
-      <div class="dstat"><span>Peak hour</span><b>${peakLabel(hs)}</b></div>
-      <div class="dstat"><span>Latest draw</span><b>${fmtKwh(a.watts / 1000)} kW</b></div>
-      <div class="dstat"><span>Cost today</span><b>${money(a.today)}</b></div>`;
-    labels.innerHTML = ['12a', '6a', '12p', '6p', '11p'].map(l => `<span style="flex:1;text-align:center">${l}</span>`).join('');
+      <div class="dstat"><span class="dstat-k">Recorded today</span><b class="dstat-v">${fmtKwh(a.today)} kWh</b></div>
+      <div class="dstat"><span class="dstat-k">Peak hour</span><b class="dstat-v">${peakLabel(hs)}</b></div>
+      <div class="dstat"><span class="dstat-k">Latest draw</span><b class="dstat-v">${fmtKwh(a.watts / 1000)} kW</b></div>
+      <div class="dstat"><span class="dstat-k">Cost today</span><b class="dstat-v">${money(a.today)}</b></div>`;
+    labels.innerHTML = ['12a', '6a', '12p', '6p', '11p'].map(l => `<span class="chart-tick-label">${l}</span>`).join('');
   } else {
     const data = range === '7d' ? a.week : a.month;
     const lbl = range === '7d' ? weekLabels : monthLabels;
@@ -965,11 +1089,11 @@ function renderDetailChart(a, range) {
     const loLabel = lbl[data.indexOf(lo)];
     barChart(el, data, { today: data.length - 1 });
     stats.innerHTML = `
-      <div class="dstat"><span>Total</span><b>${total.toFixed(1)} kWh</b></div>
-      <div class="dstat"><span>Average</span><b>${avg.toFixed(2)} kWh/day</b></div>
-      <div class="dstat"><span>Highest</span><b>${hiLabel} · ${hi.toFixed(1)} kWh</b></div>
-      <div class="dstat"><span>Lowest</span><b>${loLabel} · ${lo.toFixed(1)} kWh</b></div>`;
-    labels.innerHTML = lbl.filter((_, i) => i % 2 === 0).map(l => `<span style="flex:1;text-align:center">${l}</span>`).join('');
+      <div class="dstat"><span class="dstat-k">Total</span><b class="dstat-v">${total.toFixed(1)} kWh</b></div>
+      <div class="dstat"><span class="dstat-k">Average</span><b class="dstat-v">${avg.toFixed(2)} kWh/day</b></div>
+      <div class="dstat"><span class="dstat-k">Highest</span><b class="dstat-v">${hiLabel} · ${hi.toFixed(1)} kWh</b></div>
+      <div class="dstat"><span class="dstat-k">Lowest</span><b class="dstat-v">${loLabel} · ${lo.toFixed(1)} kWh</b></div>`;
+    labels.innerHTML = lbl.filter((_, i) => i % 2 === 0).map(l => `<span class="chart-tick-label">${l}</span>`).join('');
   }
 }
 
@@ -983,8 +1107,8 @@ function peakLabel(data) {
 function renderDetailWhy(a) {
   const diff = +(a.today - a.usual).toFixed(1);
   $('#detail-why').innerHTML = diff > 0
-    ? `Today you used <b>${diff} kWh more</b> than your usual day. ${a.whyReason}`
-    : `Today you used <b>${Math.abs(diff)} kWh less</b> than your usual day. ${a.whyReason}`;
+    ? `Today you used <b class="why-highlight">${diff} kWh more</b> than your usual day. ${a.whyReason}`
+    : `Today you used <b class="why-highlight">${Math.abs(diff)} kWh less</b> than your usual day. ${a.whyReason}`;
 }
 
 function renderDetailRec(a) {
@@ -992,14 +1116,20 @@ function renderDetailRec(a) {
   $('#detail-rec').innerHTML = `
     <div class="rec-step">
       <span class="rec-ico">${icon('leaf', 20)}</span>
-      <div><p class="rec-v"><b>${r.title}</b></p></div>
+      <div class="rec-step-body">
+        <p class="rec-v"><b>${r.title}</b></p>
+        <p class="rec-sub-text">${r.action || ''}</p>
+      </div>
     </div>
     <div class="rec-step">
       <span class="rec-ico">${icon('target', 20)}</span>
-      <div><p class="rec-k">Expected impact</p><p class="rec-v">${r.impact}</p></div>
+      <div class="rec-step-body">
+        <p class="rec-k">Expected impact</p>
+        <p class="rec-v"><span class="impact-pill">${r.impact}</span></p>
+      </div>
     </div>
     <div class="rec-actions">
-      <button class="btn-ghost" data-go="Insights" data-tab="recommend">See all recommendations</button>
+      <button class="btn-ghost" data-go="Insights" data-tab="recommend">See all recommendations →</button>
     </div>`;
   injectIcons($('#detail-rec'));
 }
@@ -1074,6 +1204,7 @@ function renderUsage() {
 }
 
 function renderPatterns() {
+  renderPeak();
   barChart($('#hour-chart'), hourly, { highlight: [17, 18, 19, 20, 21, 22] });
   $('#hour-chart').classList.remove('line-chart');
   $('#hour-chart').classList.add('bar-chart');
@@ -1088,20 +1219,30 @@ function renderRecommend() {
   $('#rec-list').innerHTML = list.map(({ a, r, diff, rank }) => `
       <div class="card rec-card">
         <div class="rec-head">
-          <span class="rec-ico">${icon(r.ico, 22)}</span>
-          <div>
+          <span class="rec-ico">${icon(r.ico, 24)}</span>
+          <div class="rec-title-group">
             <p class="rec-title">${r.title}</p>
-            <p class="muted">${a.short} · ${diff > 0.01 ? `${fmtKwh(diff)} kWh above usual` : diff < -0.01 ? `${fmtKwh(-diff)} kWh below usual` : 'about usual'}</p>
+            <span class="rec-sub-info">${a.short} · ${diff > 0.01 ? `${fmtKwh(diff)} kWh above usual` : diff < -0.01 ? `${fmtKwh(-diff)} kWh below usual` : 'about usual'}</span>
           </div>
         </div>
-        <p class="rec-v">${r.problem}</p>
-        <p class="rec-v" style="color:var(--text-2)">${r.insight}</p>
-        <div class="rec-tags">
-          <span class="rec-impact">${r.impact}</span>
-          <span class="rec-diff ${rank === 0 ? 'highest' : rank < 3 ? 'medium' : ''}">${priorityTier(rank)}</span>
+        <div class="rec-body">
+          <div class="rec-problem-box">
+            <span class="rec-label">Observed Pattern</span>
+            <p class="rec-v">${r.problem}</p>
+          </div>
+          <div class="rec-insight-box">
+            <span class="rec-label">Recommended Action</span>
+            <p class="rec-v" style="color:var(--text-2)">${r.insight}</p>
+          </div>
         </div>
-        <div class="rec-actions">
-          <button class="btn-ghost" data-go-detail="${a.id}">View ${a.short} usage</button>
+        <div class="rec-footer">
+          <div class="rec-tags">
+            <span class="rec-impact"><svg class="se-icon" width="13" height="13" aria-hidden="true"><use href="#i-leaf"/></svg> ${r.impact}</span>
+            <span class="rec-diff ${rank === 0 ? 'highest' : rank < 3 ? 'medium' : ''}">${priorityTier(rank)}</span>
+          </div>
+          <div class="rec-actions">
+            <button class="btn-ghost rec-action-btn" data-go-detail="${a.id}">View ${a.short} usage →</button>
+          </div>
         </div>
       </div>`).join('');
   injectIcons($('#rec-list'));
