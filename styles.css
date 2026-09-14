@@ -3992,55 +3992,176 @@ circle[data-i]:focus {
   .goal-num {
     font-size: 28px;
   }
+
+  /* Insights screen clearance to prevent any content or cards from being obscured by the floating dock */
+  #screen-Insights {
+    padding-bottom: calc(240px + env(safe-area-inset-bottom, 0px));
+  }
+  #tab-patterns .card,
+  #tab-goals .card {
+    scroll-margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 1. Goals / Energy Score Compact Polish */
+  .score-card {
+    padding: 14px 16px;
+  }
   .score-row {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
+    gap: 10px;
+    margin: 8px 0 10px;
   }
   .score-big {
     flex-direction: row;
     justify-content: flex-start;
-    gap: 16px;
+    gap: 12px;
     align-items: center;
   }
   .score-ring {
-    width: 68px;
-    height: 68px;
+    width: 52px;
+    height: 52px;
+    border-width: 2.5px;
   }
   .score-num.big {
-    font-size: 30px;
+    font-size: 24px;
+    letter-spacing: -0.5px;
+  }
+  .score-label {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .score-factors {
+    gap: 6px;
+  }
+  .factor {
+    gap: 8px;
   }
   .factor span.name {
-    width: 95px;
+    width: 104px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .factor-track {
+    height: 6px;
+  }
+  .factor-val {
     font-size: 12px;
+    width: 26px;
   }
-  .rec-grid {
-    grid-template-columns: 1fr;
+  .score-why {
+    font-size: 12.5px;
+    line-height: 1.45;
+    padding: 10px 12px;
+    margin-top: 8px;
   }
-  .rec-card {
-    padding: 16px;
+  .score-actions {
+    margin-top: 8px;
   }
-  .rec-footer {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  .rec-action-btn {
+  .score-btn {
     width: 100%;
     justify-content: center;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 12.5px;
   }
-  .peak-story-card {
+
+  /* 2. Usage / Expected Electricity Bill Polish */
+  .forecast-card {
     padding: 16px;
+    scroll-margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   }
-  .peak-text {
-    font-size: 15px;
+  .fc-hero {
+    padding: 6px 0 4px;
   }
   .fc-amount {
-    font-size: 34px;
+    font-size: 32px;
+    margin: 4px 0 2px;
+  }
+  .fc-sub {
+    font-size: 12.5px;
+    line-height: 1.35;
+    margin-bottom: 6px;
+  }
+  .fc-eq {
+    padding: 6px 10px;
+    margin-top: 4px;
+  }
+  .fc-note {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 10px;
+    padding-top: 8px;
+  }
+  .fc-actions {
+    margin-top: 12px;
+    gap: 8px;
   }
   .fc-btn {
     width: 100%;
     justify-content: center;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+  }
+  .tab-pane {
+    padding-bottom: 12px;
+  }
+
+  /* 3. Patterns / Hourly Chart Height Polish (~18.75% reduction: 160px -> 130px) */
+  #hour-chart {
+    height: 130px !important;
+  }
+  .peak-story-card {
+    padding: 14px 16px;
+  }
+  .peak-text {
+    font-size: 14.5px;
+  }
+
+  /* 4. Recommendations / Card Spacing Polish */
+  .rec-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .rec-card {
+    padding: 14px 15px;
+    gap: 10px;
+  }
+  .rec-head {
+    gap: 10px;
+  }
+  .rec-head .rec-ico {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+  }
+  .rec-title {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+  .rec-body {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .rec-v {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .rec-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .rec-tags {
+    gap: 6px;
+  }
+  .rec-action-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 12.5px;
   }
   .appl-card { gap: 12px; padding: 14px 16px; }
   .appl-arrow { display: none; }
