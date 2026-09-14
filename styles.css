@@ -623,6 +623,12 @@ svg.se-icon,
   transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
   flex-shrink: 0;
 }
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  pointer-events: none;
+}
 .icon-btn:hover {
   background: var(--surface-2);
   color: var(--text);
